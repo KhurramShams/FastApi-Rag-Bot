@@ -1,0 +1,12 @@
+python-dotenv
+pinecone
+langchain
+langchain-openai
+langchain-pinecone
+openai
+pypdf
+requests
+numpy
+streamlit
+fitz
+PyMuPDF
