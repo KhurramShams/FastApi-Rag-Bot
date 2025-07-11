@@ -8,6 +8,7 @@ from langchain.chains import RetrievalQA
 from pdf_utils import load_environment, initialize_pinecone, initialize_embeddings, initialize_llm, store_chunks_in_pinecone, query_llm_with_rag, get_pdf_hash, is_document_already_indexed
 import logging
 
+
 load_dotenv()
 
 # Define API keys
@@ -80,6 +81,7 @@ if Display:
         pdf_hash=get_pdf_hash(file_content)
 
         if not is_document_already_indexed(pc.Index("rag-index"), pdf_hash):
+
         # Store PDF validation result
             if file and "pdf_validated" not in st.session_state:
                 is_valid, msg, extracted_text = validate_pdf(file_content)
@@ -102,7 +104,7 @@ if Display:
                 except Exception as e:
                     st.error(f"❌ Error storing embeddings in Pinecone: {str(e)}")
             else:
-                st.error("❌ " + st.session_state.pdf_msg)
+                st.error("❌ Error in pdf validation." + st.session_state.pdf_msg)
         else:
             st.success("✅ Document already indexed.")
             

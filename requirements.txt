@@ -8,5 +8,4 @@ pypdf
 requests
 numpy
 streamlit
-fitz
-PyMuPDF
+PyMuPDF==1.23.3

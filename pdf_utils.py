@@ -1,8 +1,6 @@
-import fitz
 from langchain.text_splitter import RecursiveCharacterTextSplitter 
 import os
 from dotenv import load_dotenv
-import streamlit as st
 from pinecone import Pinecone, ServerlessSpec
 from langchain_openai import OpenAIEmbeddings, ChatOpenAI
 from langchain_pinecone import PineconeVectorStore
@@ -70,6 +68,26 @@ def initialize_llm(api_key):
         logger.error(f"Error initializing LLM: {str(e)}")
         raise
 
+# --- helper to ensure the correct fitz/PyMuPDF is loaded
+def _get_pymupdf():
+    """
+    Return the real PyMuPDF module. If the wrong 'fitz' package is installed,
+    raise an ImportError with a helpful hint.
+    """
+    try:
+        import fitz  # PyMuPDF installs under the name 'fitz'
+        if not hasattr(fitz, "open"):          # wrong package gives this away
+            raise ImportError(
+                "Found a stub 'fitz' package without 'open()'. "
+                "Uninstall it and install PyMuPDF:  pip uninstall -y fitz && pip install --upgrade PyMuPDF"
+            )
+        return fitz
+    except ModuleNotFoundError:
+        raise ImportError(
+            "PyMuPDF not installed. Install it with:  pip install PyMuPDF"
+        )
+
+
 def store_chunks_in_pinecone(chunks, embedding_function, index_name="rag-index", pdf_hash="unknown"):
     try:
         metadatas = [{"doc_hash": pdf_hash, "chunk_id": i} for i in range(len(chunks))]
@@ -87,6 +105,7 @@ def store_chunks_in_pinecone(chunks, embedding_function, index_name="rag-index",
 
 def validate_pdf(file_content) -> tuple[bool, str, str]:
     try:
+        fitz = _get_pymupdf() 
         doc = fitz.open(stream=file_content, filetype="pdf")
         page_count = len(doc)
         
@@ -110,6 +129,7 @@ def validate_pdf(file_content) -> tuple[bool, str, str]:
 def process_pdf_and_split(file_content, chunk_size=500, chunk_overlap=50):
     try:
         # Step 1: Read PDF with PyMuPDF
+        fitz = _get_pymupdf() 
         doc = fitz.open(stream=file_content, filetype="pdf")
         full_text = ""
         for page in doc:
