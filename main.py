@@ -1,4 +1,4 @@
-from fastapi import FastAPI, File, UploadFile, HTTPException, status, Request
+from fastapi import FastAPI, File, Path, UploadFile, HTTPException, status, Request
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -16,7 +16,10 @@ import logging
 app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"]
+    allow_origins=["https://your-wordpress-site.com"],  # Replace with your WordPress domain
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"]
 )
 
 # --- Logging
@@ -35,7 +38,9 @@ except Exception as e:
     raise
 
 # --- In-memory cache for vector stores
+# --- In-memory cache for vector stores (limited to 5 entries)
 vector_store_cache = {}
+MAX_CACHE_SIZE = 5
 
 @app.get("/")
 def root():
@@ -48,6 +53,13 @@ async def upload_pdf(file: UploadFile = File(...)):
 
     file_bytes = await file.read()
     pdf_hash = get_pdf_hash(file_bytes)
+
+    # Save PDF to ./documents/
+    documents_dir = Path("./documents")
+    documents_dir.mkdir(exist_ok=True)
+    file_path = documents_dir / file.filename
+    with file_path.open("wb") as f:
+        f.write(file_bytes)
 
     # Check if already indexed
     try:
@@ -73,7 +85,12 @@ async def upload_pdf(file: UploadFile = File(...)):
             embedding_function=embedding_function,
             pdf_hash=pdf_hash
         )
+        
+        # Limit cache size
+        if len(vector_store_cache) >= MAX_CACHE_SIZE:
+            vector_store_cache.pop(next(iter(vector_store_cache)))
         vector_store_cache[pdf_hash] = vector_store
+
         return {"stored": True, "hash": pdf_hash, "msg": "Stored embeddings in Pinecone.", "chunks": len(chunks)}
     except Exception as e:
         logger.error(f"Error storing embeddings: {e}")
