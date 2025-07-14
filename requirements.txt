@@ -1,11 +1,9 @@
+fastapi
+uvicorn[standard]
 python-dotenv
-pinecone
+pinecone-client==2.*
 langchain
 langchain-openai
 langchain-pinecone
-openai
-pypdf
-requests
-numpy
-streamlit
 PyMuPDF==1.23.3
+requests
