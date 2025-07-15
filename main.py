@@ -33,6 +33,7 @@ try:
     pc = initialize_pinecone(PINECONE_API_KEY)
     embedding_function = initialize_embeddings(OPENAI_API_KEY)
     llm = initialize_llm(OPENAI_API_KEY)
+    pc = None  # Defer Pinecone initialization
 except Exception as e:
     logger.error(f"Startup error: {e}")
     raise
@@ -63,6 +64,8 @@ async def upload_pdf(file: UploadFile = File(...)):
 
     # Check if already indexed
     try:
+        if pc is None:
+            pc = initialize_pinecone(PINECONE_API_KEY)
         index = pc.Index("rag-index")
         already_indexed = is_document_already_indexed(index, pdf_hash)
     except Exception as e:
@@ -102,6 +105,7 @@ class AskRequest(BaseModel):
 
 @app.post("/ask/")
 async def ask(request: AskRequest):
+    global pc
     pdf_hash = request.hash
     question = request.question.strip()
     if not pdf_hash:
@@ -113,6 +117,8 @@ async def ask(request: AskRequest):
     vector_store = vector_store_cache.get(pdf_hash)
     if not vector_store:
         try:
+            if pc is None:
+                pc = initialize_pinecone(PINECONE_API_KEY)
             vector_store = PineconeVectorStore(
                 index_name="rag-index",
                 embedding=embedding_function,
